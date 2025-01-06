@@ -6,9 +6,15 @@
 #include <stdbool.h>
 #include <stdlib.h>
 
+typedef struct SmartSumset {
+    Sumset sumset;
+    struct SmartSumset* parent;
+    int reference_count;
+} SmartSumset_t;
+
 typedef struct PairToSolve {
-    Sumset* a;
-    Sumset* b;
+    SmartSumset_t* a;
+    SmartSumset_t* b;
 } PairToSolve_t;
 
 typedef struct Stack {
@@ -51,57 +57,100 @@ void sumset_swap(Sumset** a, Sumset** b) {
     *b = tmp;
 }
 
-void nonrecursive_complete_dummy_solv(InputData* input_data, Solution* best_solution) 
-{      
+void smart_sumset_swap(SmartSumset_t** a, SmartSumset_t** b) {
+    SmartSumset_t* tmp = *a;
+    *a = *b;
+    *b = tmp;
+}
+
+void check_sumset_reference_count(SmartSumset_t* sumset) {
+    while (sumset != NULL && sumset->reference_count == 0) {
+        SmartSumset_t* tmp = sumset;
+        sumset = sumset->parent;
+        free(tmp);
+
+        if (sumset != NULL) {
+            sumset->reference_count--;
+        }
+    }
+}
+
+void nonrecursive_dummy_solv_no_leaks(InputData* input_data, Solution* best_solution) {
     Stack_t* stack = stack_init(8192);
 
-    PairToSolve_t* pair = (PairToSolve_t*) malloc(sizeof(PairToSolve_t));
-    pair->a = &input_data->a_start; 
-    pair->b = &input_data->b_start;
+    SmartSumset_t* a = (SmartSumset_t*) malloc(sizeof(SmartSumset_t));
+    a->sumset = input_data->a_start;
+    a->parent = NULL;
+    a->reference_count = 2;
 
-    stack_push(stack, pair);
+    SmartSumset_t* b = (SmartSumset_t*) malloc(sizeof(SmartSumset_t));
+    b->sumset = input_data->b_start;
+    b->parent = NULL;
+    b->reference_count = 2;
+
+    PairToSolve_t* pairToPush = (PairToSolve_t*) malloc(sizeof(PairToSolve_t));
+    pairToPush->a = a; 
+    pairToPush->b = b;
+
+    stack_push(stack, pairToPush);
 
     while (!stack_is_empty(stack)) {
         PairToSolve_t* pair = stack_pop(stack);
-        Sumset* a = pair->a;
-        Sumset* b = pair->b;
-        free(pair);
+        SmartSumset_t* a = pair->a; 
+        SmartSumset_t* b = pair->b;
 
-        if (a->sum > b->sum) {
-            sumset_swap(&a, &b);
+        if (a->sumset.sum > b->sumset.sum) {
+            smart_sumset_swap(&a, &b);
         }
 
-        if (is_sumset_intersection_trivial(a, b)) { // s(a) ∩ s(b) = {0}.
-            for (size_t i = a->last; i <= input_data->d; ++i) {
-                if (!does_sumset_contain(b, i)) {
-                    Sumset* a_with_i = (Sumset*) malloc(sizeof(Sumset));
-                    sumset_add(a_with_i, a, i);
+        if (is_sumset_intersection_trivial(&a->sumset, &b->sumset)) { // s(a) ∩ s(b) = {0}.
+            for (size_t i = a->sumset.last; i <= input_data->d; ++i) {
+                if (!does_sumset_contain(&b->sumset, i)) {
+                    SmartSumset_t* a_with_i = (SmartSumset_t*) malloc(sizeof(SmartSumset_t));
+                    a_with_i->reference_count = 1;
+                    a_with_i->parent = a;
+                    sumset_add(&a_with_i->sumset, &a->sumset, i);
 
                     PairToSolve_t* new_pair = (PairToSolve_t*) malloc(sizeof(PairToSolve_t));
                     new_pair->a = a_with_i;
                     new_pair->b = b;
 
+                    a->reference_count++;
+                    b->reference_count++;
+
                     stack_push(stack, new_pair);
                 }
             }
-        } else if ((a->sum == b->sum) && (get_sumset_intersection_size(a, b) == 2)) { // s(a) ∩ s(b) = {0, ∑b}.
-            if (a->sum > best_solution->sum) {
-                solution_build(best_solution, input_data, a, b);
+        } else if ((a->sumset.sum == b->sumset.sum) && (get_sumset_intersection_size(&a->sumset, &b->sumset) == 2)) { // s(a) ∩ s(b) = {0, ∑b}.
+            if (a->sumset.sum > best_solution->sum) {
+                solution_build(best_solution, input_data, &a->sumset, &b->sumset);
             }
         }
+
+        a->reference_count--;
+        b->reference_count--;
+        
+        check_sumset_reference_count(a);
+        check_sumset_reference_count(b);
+
+        free(pair);
     }
+
+    stack_destroy(stack);
+    free(a);
+    free(b);
 }
 
 int main()
 {
     InputData input_data;
     //input_data_read(&input_data);
-    input_data_init(&input_data, 8, 24, (int[]){0}, (int[]){1, 0});
+    input_data_init(&input_data, 8, 10, (int[]){0}, (int[]){1, 0});
 
     Solution best_solution;
     solution_init(&best_solution);
 
-    nonrecursive_complete_dummy_solv(&input_data, &best_solution);
+    nonrecursive_dummy_solv_no_leaks(&input_data, &best_solution);
 
     solution_print(&best_solution);
     return 0;

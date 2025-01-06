@@ -7,7 +7,7 @@ project(multiset LANGUAGES C)
 set(CMAKE_C_STANDARD 17)
 set(CMAKE_C_STANDARD_REQUIRED ON)
 
-add_compile_options(-Wall -Wextra -Wno-sign-compare -Wno-unused-parameter -Wno-uninitialized -Wno-unused-function -Werror)
+add_compile_options(-g -Wall -Wextra -Wno-sign-compare -Wno-unused-parameter -Wno-uninitialized -Wno-unused-function -Werror)
 add_compile_options(-pthread)
 add_link_options(-pthread)
 
