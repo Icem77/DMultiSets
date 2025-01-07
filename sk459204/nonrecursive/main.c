@@ -121,7 +121,7 @@ void check_sumset_reference_count(SmartSumsetPool_t* pool, SmartSumset_t* sumset
 }
 
 void nonrecursive_pool_solv_no_pairs(InputData* input_data, Solution* best_solution) {
-    SmartSumsetPool_t* pool = pool_init(8192);
+    SmartSumsetPool_t* pool = pool_init(1024);
 
     SmartSumset_t* a = pool_get(pool);
     a->sumset = input_data->a_start;
@@ -133,8 +133,10 @@ void nonrecursive_pool_solv_no_pairs(InputData* input_data, Solution* best_solut
     b->parent = NULL;
     b->reference_count = 2;
 
-    Stack_t* stack = stack_init(8192);
+    Stack_t* stack = stack_init(4096);
     stack_push(stack, a, b);
+
+    int counter;
 
     while (!stack_is_empty(stack)) {
         stack_pop(stack, &a, &b);
@@ -144,6 +146,7 @@ void nonrecursive_pool_solv_no_pairs(InputData* input_data, Solution* best_solut
         }
 
         if (is_sumset_intersection_trivial(&a->sumset, &b->sumset)) { // s(a) ∩ s(b) = {0}.
+            counter = 0;
             for (size_t i = a->sumset.last; i <= input_data->d; ++i) {
                 if (!does_sumset_contain(&b->sumset, i)) {
                     SmartSumset_t* a_with_i = pool_get(pool);
@@ -151,12 +154,14 @@ void nonrecursive_pool_solv_no_pairs(InputData* input_data, Solution* best_solut
                     a_with_i->parent = a;
                     sumset_add(&a_with_i->sumset, &a->sumset, i);
 
-                    a->reference_count++;
-                    b->reference_count++;
+                    counter++;
 
                     stack_push(stack, a_with_i, b);
                 }
             }
+
+            a->reference_count += counter;
+            b->reference_count += counter;
         } else if ((a->sumset.sum == b->sumset.sum) && (get_sumset_intersection_size(&a->sumset, &b->sumset) == 2)) { // s(a) ∩ s(b) = {0, ∑b}.
             if (a->sumset.sum > best_solution->sum) {
                 solution_build(best_solution, input_data, &a->sumset, &b->sumset);
@@ -178,7 +183,7 @@ int main()
 {
     InputData input_data;
     //input_data_read(&input_data);
-    input_data_init(&input_data, 8, 16, (int[]){0}, (int[]){1, 0});
+    input_data_init(&input_data, 8, 34, (int[]){0}, (int[]){1, 0});
 
     Solution best_solution;
     solution_init(&best_solution);
