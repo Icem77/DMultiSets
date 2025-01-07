@@ -14,13 +14,8 @@ typedef struct SmartSumset {
     struct SmartSumset* next_on_free_list; // connection in memory pool
 } SmartSumset_t;
 
-typedef struct PairToSolve {
-    SmartSumset_t* a;
-    SmartSumset_t* b;
-} PairToSolve_t;
-
 typedef struct Stack {
-    PairToSolve_t* stack;
+    SmartSumset_t** stack;
     int last_push_index;
     int stack_size;
 } Stack_t;
@@ -75,27 +70,27 @@ void pool_destroy(SmartSumsetPool_t* pool) {
 
 Stack_t* stack_init(int stack_size) {
     Stack_t* stack = (Stack_t*) malloc(sizeof(Stack_t));
-    stack->stack = (PairToSolve_t*) malloc(stack_size * sizeof(PairToSolve_t));
+    stack->stack = (SmartSumset_t**) malloc(stack_size * sizeof(SmartSumset_t*));
     stack->last_push_index = -1;
     stack->stack_size = stack_size;
     return stack;
 }
 
 void stack_push(Stack_t* stack, SmartSumset_t* a, SmartSumset_t* b) {
-    stack->last_push_index++;
+    stack->last_push_index += 2;
     if (stack->last_push_index == stack->stack_size) {
-        stack->stack = (PairToSolve_t*) realloc(stack->stack, 2 * stack->stack_size * sizeof(PairToSolve_t));
+        stack->stack = (SmartSumset_t**) realloc(stack->stack, 2 * stack->stack_size * sizeof(SmartSumset_t*));
         stack->stack_size *= 2;
     }
 
-    stack->stack[stack->last_push_index].a = a;
-    stack->stack[stack->last_push_index].b = b;
+    stack->stack[stack->last_push_index - 1] = a;
+    stack->stack[stack->last_push_index] = b;
 }
 
 void stack_pop(Stack_t* stack, SmartSumset_t** a, SmartSumset_t** b) {
-    *a = stack->stack[stack->last_push_index].a;
-    *b = stack->stack[stack->last_push_index].b;
-    stack->last_push_index--;
+    *b = stack->stack[stack->last_push_index];
+    *a = stack->stack[stack->last_push_index - 1];
+    stack->last_push_index -= 2;
 }
 
 bool stack_is_empty(Stack_t* stack) {
@@ -125,8 +120,8 @@ void check_sumset_reference_count(SmartSumsetPool_t* pool, SmartSumset_t* sumset
     }
 }
 
-void nonrecursive_pool_solv(InputData* input_data, Solution* best_solution) {
-    SmartSumsetPool_t* pool = pool_init(16384);
+void nonrecursive_pool_solv_no_pairs(InputData* input_data, Solution* best_solution) {
+    SmartSumsetPool_t* pool = pool_init(8192);
 
     SmartSumset_t* a = pool_get(pool);
     a->sumset = input_data->a_start;
@@ -183,12 +178,12 @@ int main()
 {
     InputData input_data;
     //input_data_read(&input_data);
-    input_data_init(&input_data, 8, 34, (int[]){0}, (int[]){1, 0});
+    input_data_init(&input_data, 8, 16, (int[]){0}, (int[]){1, 0});
 
     Solution best_solution;
     solution_init(&best_solution);
 
-    nonrecursive_pool_solv(&input_data, &best_solution);
+    nonrecursive_pool_solv_no_pairs(&input_data, &best_solution);
 
     solution_print(&best_solution);
     return 0;
