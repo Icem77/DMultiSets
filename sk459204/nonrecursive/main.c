@@ -109,14 +109,10 @@ void smart_sumset_swap(SmartSumset_t** a, SmartSumset_t** b) {
 }
 
 void check_sumset_reference_count(SmartSumsetPool_t* pool, SmartSumset_t* sumset) {
-    while (sumset != NULL && sumset->reference_count == 0) {
+    while (sumset != NULL && --sumset->reference_count == 0) {
         SmartSumset_t* tmp = sumset;
         sumset = sumset->parent;
         pool_return(pool, tmp);
-
-        if (sumset != NULL) {
-            sumset->reference_count--;
-        }
     }
 }
 
@@ -167,10 +163,6 @@ void nonrecursive_pool_solv_no_pairs(InputData* input_data, Solution* best_solut
                 solution_build(best_solution, input_data, &a->sumset, &b->sumset);
             }
         }
-
-        a->reference_count--;
-        b->reference_count--;
-
         check_sumset_reference_count(pool, a);
         check_sumset_reference_count(pool, b);
     }
