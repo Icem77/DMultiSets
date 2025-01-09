@@ -3,6 +3,8 @@
 #include "common/io.h"
 #include "common/sumset.h"
 
+#include <stdio.h>
+
 static InputData input_data;
 
 static Solution best_solution;
@@ -29,7 +31,7 @@ static void solve(const Sumset* a, const Sumset* b)
 int main()
 {
     //input_data_read(&input_data);
-    input_data_init(&input_data, 8, 34, (int[]){0}, (int[]){1, 0});
+    input_data_init(&input_data, 8, 16, (int[]){0}, (int[]){1, 0});
 
     solution_init(&best_solution);
     solve(&input_data.a_start, &input_data.b_start);
