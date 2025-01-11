@@ -11,6 +11,9 @@
 
 #define INITIAL_BRANCH_POOL_SIZE 8192
 
+atomic_int locks = 0;
+atomic_int frees = 0;
+
 typedef struct SmartParallelSumset {
     Sumset sumset;
     struct SmartParallelSumset* parent;
@@ -111,6 +114,15 @@ void swap(SPS_t** a, SPS_t** b) {
     *b = tmp;
 }
 
+void check_if_free(SPS_t* a) {
+    if (atomic_fetch_sub(&a->parent_to, 1) == 1) {
+        SPS_t* parent_to_check = a->parent;
+        atomic_fetch_add(&frees, 1);
+        free(a);
+        check_if_free(parent_to_check);
+    }    
+}
+
 void branch_split(TR_t* resources, SPS_t* a, SPS_t* b) {
     if (a->sumset.sum > b->sumset.sum) {
         swap(&a, &b);
@@ -119,17 +131,30 @@ void branch_split(TR_t* resources, SPS_t* a, SPS_t* b) {
     if (is_sumset_intersection_trivial(&a->sumset, &b->sumset)) { // s(a) ∩ s(b) = {0}.
         for (size_t i = a->sumset.last; i <= resources->input->d; ++i) {
             if (!does_sumset_contain(&b->sumset, i)) {
+                atomic_fetch_add(&locks, 1);
                 SPS_t* a_with_i = (SPS_t*) malloc(sizeof(SPS_t));
                 a_with_i->parent = a;
+                atomic_store(&a_with_i->parent_to, 1);
+
                 sumset_add(&a_with_i->sumset, &a->sumset, i);
+
+                atomic_fetch_add(&a->parent_to, 1);
+                atomic_fetch_add(&b->parent_to, 1);
                 give_away_branch(resources->branch_pool, a_with_i, b);
             }
         }
-    } else if ((a->sumset.sum == b->sumset.sum) && (get_sumset_intersection_size(&a->sumset, &b->sumset) == 2)) { // s(a) ∩ s(b) = {0, ∑b}.
-        if (a->sumset.sum > resources->mySolution->sum) {
-            solution_build(resources->mySolution, resources->input, &a->sumset, &b->sumset);
+        // zliczamy sie w lisciach 
+        check_if_free(a);
+        check_if_free(b);
+    } else {
+        if ((a->sumset.sum == b->sumset.sum) && (get_sumset_intersection_size(&a->sumset, &b->sumset) == 2)) { // s(a) ∩ s(b) = {0, ∑b}.
+            if (a->sumset.sum > resources->mySolution->sum) {
+                solution_build(resources->mySolution, resources->input, &a->sumset, &b->sumset);
+            }
         }
-    }
+        check_if_free(a);
+        check_if_free(b);
+    } 
 }
 
 void recursive_solv(TR_t* resources, SPS_t* a, SPS_t* b) {
@@ -165,6 +190,8 @@ void* thread_calculations(void* args) {
             branch_split(resources, a, b);
         } else {
             recursive_solv(resources, a, b);
+            check_if_free(a);
+            check_if_free(b);
         }
 
         take_new_branch(resources->branch_pool, &a, &b, resources->input->t);
@@ -177,17 +204,19 @@ int main()
 {   
     InputData input_data;
     //input_data_read(&input_data);
-    input_data_init(&input_data, 16, 34, (int[]){0}, (int[]){1, 0});
+    input_data_init(&input_data, 8, 34, (int[]){0}, (int[]){1, 0});
 
     BranchPool_t* common_branch_pool = branch_pool_init();
 
     SPS_t a;
     a.sumset = input_data.a_start;
     a.parent = NULL;
+    atomic_store(&a.parent_to, 7);
 
     SPS_t b;
     b.sumset = input_data.b_start;
     b.parent = NULL;
+    atomic_store(&b.parent_to, 7);
 
     give_away_branch(common_branch_pool, &a, &b);
 
@@ -218,6 +247,10 @@ int main()
     }
 
     solution_print(best_solution);
+
+    branch_pool_destroy(common_branch_pool);
+
+    printf("LOCKS: %d - FREES: %d", locks, frees);
     
     return 0;
 }
