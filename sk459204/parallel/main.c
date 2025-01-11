@@ -70,13 +70,11 @@ void take_new_branch(BranchPool_t* pool, SPS_t** a, SPS_t** b, int workingThread
     *b = NULL;
 
     if (pool->last_push_index == -1 && pool->waiting_threads == workingThreads - 1) {
-        printf("CALCULATIONS FINISHED!\n");
         pool->finish = true;
         pthread_cond_broadcast(&pool->waiting_room);
         pthread_mutex_unlock(&pool->mutex);
         return;
     } else if (pool->last_push_index == -1) {
-        printf("NO BRANCHES IN POOL, GOING TO SLEEP!\n");
         while (pool->last_push_index == -1 && !pool->finish) {
             pool->waiting_threads++;
             pthread_cond_wait(&pool->waiting_room, &pool->mutex);
@@ -85,7 +83,6 @@ void take_new_branch(BranchPool_t* pool, SPS_t** a, SPS_t** b, int workingThread
     }
 
     if (pool->last_push_index != -1) {
-        printf("TAKING BRANCH FROM THE POOL!\n");
         *b = pool->stack[pool->last_push_index];
         *a = pool->stack[pool->last_push_index - 1];
         pool->last_push_index -= 2;
@@ -122,10 +119,10 @@ void branch_split(TR_t* resources, SPS_t* a, SPS_t* b) {
     if (is_sumset_intersection_trivial(&a->sumset, &b->sumset)) { // s(a) ∩ s(b) = {0}.
         for (size_t i = a->sumset.last; i <= resources->input->d; ++i) {
             if (!does_sumset_contain(&b->sumset, i)) {
-                SPS_t a_with_i;
-                a_with_i.parent = a;
-                sumset_add(&a_with_i.sumset, &a->sumset, i);
-                give_away_branch(resources->branch_pool, &a_with_i, b);
+                SPS_t* a_with_i = (SPS_t*) malloc(sizeof(SPS_t));
+                a_with_i->parent = a;
+                sumset_add(&a_with_i->sumset, &a->sumset, i);
+                give_away_branch(resources->branch_pool, a_with_i, b);
             }
         }
     } else if ((a->sumset.sum == b->sumset.sum) && (get_sumset_intersection_size(&a->sumset, &b->sumset) == 2)) { // s(a) ∩ s(b) = {0, ∑b}.
@@ -165,10 +162,8 @@ void* thread_calculations(void* args) {
 
     while (a != NULL && b != NULL) {
         if (branch_pool_size(resources->branch_pool) < resources->input->t - 1) {
-            printf("TRYING TO SPLIT BRANCH!\n");
             branch_split(resources, a, b);
         } else {
-            printf("SOLVING MY BRANCH!\n");
             recursive_solv(resources, a, b);
         }
 
@@ -182,9 +177,20 @@ int main()
 {   
     InputData input_data;
     //input_data_read(&input_data);
-    input_data_init(&input_data, 4, 4, (int[]){0}, (int[]){1, 0});
-    
+    input_data_init(&input_data, 16, 34, (int[]){0}, (int[]){1, 0});
+
     BranchPool_t* common_branch_pool = branch_pool_init();
+
+    SPS_t a;
+    a.sumset = input_data.a_start;
+    a.parent = NULL;
+
+    SPS_t b;
+    b.sumset = input_data.b_start;
+    b.parent = NULL;
+
+    give_away_branch(common_branch_pool, &a, &b);
+
     Solution solutions[input_data.t];
     TR_t starterPacks[input_data.t];
 
@@ -201,7 +207,6 @@ int main()
     }
 
     for (int i = 0; i < input_data.t; ++i) {
-        printf("WAITING FOR THREAD!\n");
         pthread_join(threads[i], NULL);
     }
     
