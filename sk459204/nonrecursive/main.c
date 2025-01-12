@@ -174,8 +174,8 @@ void nonrecursive_pool_solv_no_pairs(InputData* input_data, Solution* best_solut
 int main()
 {
     InputData input_data;
-    //input_data_read(&input_data);
-    input_data_init(&input_data, 8, 34, (int[]){0}, (int[]){1, 0});
+    input_data_read(&input_data);
+    //input_data_init(&input_data, 8, 34, (int[]){0}, (int[]){1, 0});
 
     Solution best_solution;
     solution_init(&best_solution);
