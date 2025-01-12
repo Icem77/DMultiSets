@@ -89,6 +89,18 @@ SPSPool_t* sps_pool_init() {
 
 SPS_t* sps_pool_get(SPSPool_t* pool) {
     ASSERT_ZERO(pthread_mutex_lock(&pool->mutex));
+    if (pool->free_list == NULL) {
+        pool->pool = (SPS_t*) realloc(pool->pool, 2 * pool->pool_size * sizeof(SPS_t));
+        check_mem_alloc(pool->pool);
+        pool->pool_size *= 2;
+        pool->free_list = &pool->pool[pool->pool_size / 2];
+
+        for (int i = pool->pool_size / 2; i < pool->pool_size - 1; ++i) {
+            pool->pool[i].next_on_free_list = &pool->pool[i + 1];
+        }
+        pool->pool[pool->pool_size - 1].next_on_free_list = NULL;
+    }
+
     SPS_t* to_return = pool->free_list;
     pool->free_list = pool->free_list->next_on_free_list;
     ASSERT_ZERO(pthread_mutex_unlock(&pool->mutex));
@@ -132,6 +144,12 @@ BranchPool_t* branch_pool_init() {
 void give_away_branch(BranchPool_t* pool, SPS_t* a, SPS_t* b) {
     ASSERT_ZERO(pthread_mutex_lock(&pool->mutex));
     pool->last_push_index += 2;
+    if (pool->last_push_index >= pool->stack_size) {
+        pool->stack = (SPS_t**) realloc(pool->stack, 2 * pool->stack_size * sizeof(SPS_t*));
+        check_mem_alloc(pool->stack);
+        pool->stack_size *= 2;
+    }
+
     pool->stack[pool->last_push_index - 1] = a;
     pool->stack[pool->last_push_index] = b;
     ASSERT_ZERO(pthread_cond_signal(&pool->waiting_room));
