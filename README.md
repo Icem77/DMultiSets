@@ -1,79 +1,63 @@
 # DMultiSets
 
-# Computational Verification of the Combinatorial Hypothesis
+# Computational Verification of a Combinatorial Hypothesis
 
-For a given multiset of natural numbers \(A\), we denote
-\[
-\sum A = \sum_{a \in A} a.
-\]
-For example, if
-\[
-A = \{1, 2, 2, 2, 10, 10\},
-\]
-then
-\[
-\sum A = 27.
-\]
-For two multisets, we write \(A \supseteq B\) if every element appears in \(A\) at least as many times as it does in \(B\). For the purposes of this project, let us adopt the following definitions.
+This project aims to computationally verify a combinatorial hypothesis concerning multisets of natural numbers. It blends theoretical combinatorial analysis with practical computation to explore optimal constructions under specific sum constraints.
 
-## Definition: \(d\)-Bounded Multiset
+## Overview
 
-A multiset \(A\) is called **\(d\)-bounded** (for a natural number \(d\)) if it is finite and all its elements belong to \(\{1, 2, \dots, d\}\) (allowing repetitions).
+Given a multiset of natural numbers A, we define its sum as:  
+**∑A = ∑₍ₐ ∈ A₎ a**.  
+For example, if A = {1, 2, 2, 2, 10, 10}, then **∑A = 27**. For two multisets, we write **A ⊇ B** if every element appears in A at least as many times as in B.
 
-## Definition: Non-Controversial Pair
+## Definitions
 
-A pair of \(d\)-bounded multisets \(A, B\) is called **non-controversial** if for all \(A' \subseteq A\) and \(B' \subseteq B\) the following equivalence holds:
-\[
-\sum A' = \sum B' \iff \bigl(A' = B' = \emptyset\bigr) \quad \text{or} \quad \bigl(A' = A \text{ and } B' = B\bigr).
-\]
-In other words, although \(\sum A = \sum B\), the sums of any non-trivial (i.e., non-empty and not equal to the whole set) subsets of \(A\) and \(B\) must be different.
+- **d-Bounded Multiset:**  
+  A multiset A is called *d-bounded* for a natural number d if it is finite and every element of A belongs to the set {1, …, d} (allowing repetitions).
+
+- **Undisputed Multisets:**  
+  A pair of d-bounded multisets A and B is called *undisputed* if for every A′ ⊆ A and B′ ⊆ B, the equality **∑A′ = ∑B′** holds **if and only if** either  
+  - A′ = B′ = ∅ (both subsets are empty), **or**  
+  - A′ = A and B′ = B (both subsets are the entire multisets).  
+
+  In other words, although **∑A = ∑B**, the sums of any non-empty proper sub-multisets of A and B must be different.
 
 ## Problem Statement
 
-For a fixed \(d \ge 3\) (we will not consider smaller \(d\)) and given multisets \(A_0, B_0\), we wish to find non-controversial \(d\)-bounded multisets \(A \supseteq A_0\) and \(B \supseteq B_0\) that maximize the value \(\sum A\) (equivalently, \(\sum B\)). We denote this maximum value by
-\[
-\alpha(d, A_0, B_0).
-\]
-We define \(\alpha(d, A_0, B_0) = 0\) if \(A_0\) and \(B_0\) are not \(d\)-bounded or if they do not have any \(d\)-bounded non-controversial supersets.
+For a fixed **d ≥ 3** (values smaller than 3 are not considered) and given initial multisets A₀ and B₀, the goal is to find undisputed d-bounded multisets **A ⊇ A₀** and **B ⊇ B₀** that maximize the value of **∑A** (equivalently, **∑B**). We denote this maximal value by **α(d, A₀, B₀)**. By definition, if A₀ and B₀ are not d-bounded or if there exist no undisputed d-bounded supersets, then **α(d, A₀, B₀) = 0**.
 
-### Example 1
+## Examples
 
-\[
-\alpha(d, \emptyset, \emptyset) \ge d(d-1).
-\]
+### Example 1: α(d, ∅, ∅) ≥ d(d − 1)
 
-**Proof Sketch:** Consider the multisets:
-- \(A = \{d, d, \dots, d\}\) (with \(d\) repeated \(d-1\) times),
-- \(B = \{d-1, d-1, \dots, d-1\}\) (with \(d-1\) repeated \(d\) times).
+**Proof Sketch:**  
+- Let **A = { d, d, …, d }** (with d − 1 occurrences).  
+- Let **B = { d − 1, d − 1, …, d − 1 }** (with d occurrences).
 
-These sets satisfy the conditions since
-\[
-\sum A = d(d-1) = \sum B.
-\]
+These multisets satisfy the conditions with **∑A = d(d − 1) = ∑B**.
 
-### Example 2
+### Example 2: α(d, ∅, {1}) ≥ (d − 1)²
 
-\[
-\alpha(d, \emptyset, \{1\}) \ge (d-1)^2.
-\]
+**Proof Sketch:**  
+- Let **A = { 1, d, d, …, d }** (with one occurrence of 1 and d − 2 occurrences of d).  
+- Let **B = { d − 1, d − 1, …, d − 1 }** (with d − 1 occurrences).
 
-**Proof Sketch:** Consider the multisets:
-- \(A = \{1, d, d, \dots, d\}\) (with \(d\) repeated \(d-2\) times),
-- \(B = \{d-1, d-1, \dots, d-1\}\) (with \(d-1\) repeated \(d-1\) times).
+These multisets satisfy the conditions with **∑A = 1 + d(d − 2) = (d − 1)² = ∑B**.
 
-These sets satisfy the conditions since
-\[
-\sum A = 1 + d(d-2) = (d-1)^2 = \sum B.
-\]
+It can be proven that the above examples are optimal, meaning that:  
+- **α(d, ∅, ∅) = d(d − 1)**  
+- **α(d, ∅, {1}) = (d − 1)²**
 
-It can be proven that these examples are optimal, i.e.,
-\[
-\alpha(d, \emptyset, \emptyset) = d(d-1)
-\]
-and
-\[
-\alpha(d, \emptyset, \{1\}) = (d-1)^2.
-\]
+## Project Goals
 
-Nevertheless, in this project we aim to verify these results computationally for as large values of \(d\) as possible, and also to compute the values of \(\alpha\) for other prescribed multisets \(A_0\) and \(B_0\).
+- **Computational Verification:**  
+  Verify the combinatorial hypothesis computationally for as large values of d as possible.
 
+- **Generalization:**  
+  Compute the values of **α** for other specified initial multisets A₀ and B₀.
+
+## Conclusion
+
+This project combines combinatorial theory with computational methods to rigorously verify properties of multisets under sum constraints. By exploring optimal constructions of undisputed multisets, it provides both theoretical insights and practical verification of the hypothesis.
+
+Happy computing!
