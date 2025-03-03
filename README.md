@@ -1,5 +1,3 @@
-# DMultiSets
-
 # Computational Verification of a Combinatorial Hypothesis 🧮
 
 This project aims to computationally verify a combinatorial hypothesis concerning multisets of natural numbers. It blends theoretical combinatorial analysis with practical computation to explore optimal constructions under specific sum constraints.
